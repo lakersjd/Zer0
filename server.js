@@ -7,38 +7,25 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-let waiting = null;
-
 app.use(express.static(path.join(__dirname, 'public')));
 
-io.on('connection', socket => {
+let waiting = null;
+
+io.on('connection', (socket) => {
   socket.on('join', () => {
     if (waiting) {
-      const partner = waiting;
+      socket.partner = waiting;
+      waiting.partner = socket;
       waiting = null;
-      socket.partner = partner;
-      partner.partner = socket;
-      socket.emit('matched');
-      partner.emit('matched');
     } else {
       waiting = socket;
     }
   });
 
-  socket.on('offer', data => {
-    if (socket.partner) socket.partner.emit('offer', data);
-  });
-
-  socket.on('answer', data => {
-    if (socket.partner) socket.partner.emit('answer', data);
-  });
-
-  socket.on('ice-candidate', data => {
-    if (socket.partner) socket.partner.emit('ice-candidate', data);
-  });
-
-  socket.on('chat-message', msg => {
-    if (socket.partner) socket.partner.emit('chat-message', msg);
+  socket.on('message', (msg) => {
+    if (socket.partner) {
+      socket.partner.emit('message', msg);
+    }
   });
 
   socket.on('disconnect', () => {
@@ -46,11 +33,13 @@ io.on('connection', socket => {
       waiting = null;
     }
     if (socket.partner) {
-      socket.partner.emit('disconnect');
       socket.partner.partner = null;
+      socket.partner.emit('message', 'Stranger disconnected.');
     }
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
