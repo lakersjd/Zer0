@@ -7,9 +7,15 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
+let waiting = null;
+
+// Serve the public directory as static
 app.use(express.static(path.join(__dirname, 'public')));
 
-let waiting = null;
+// Catch-all fallback route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 io.on('connection', (socket) => {
   socket.on('join', () => {
